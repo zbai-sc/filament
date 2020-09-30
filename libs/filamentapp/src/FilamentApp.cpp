@@ -393,16 +393,17 @@ void FilamentApp::run(const Config& config, SetupCallback setupCallback,
                 renderer->render(view->getView());
             }
             renderer->endFrame();
-        } else {
-            ++mSkippedFrames;
-        }
 
-        if (postRender) {
-            for (auto const& view : window->mViews) {
-                if (view.get() != window->mUiView) {
-                    postRender(mEngine, view->getView(), mScene, renderer);
+            if (postRender) {
+                for (auto const& view : window->mViews) {
+                    if (view.get() != window->mUiView) {
+                        postRender(mEngine, view->getView(), mScene, renderer);
+                    }
                 }
             }
+
+        } else {
+            ++mSkippedFrames;
         }
     }
 
