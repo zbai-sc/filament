@@ -177,6 +177,11 @@ public:
      */
     ViewSettings& getViewSettings() { return mViewSettings; }
 
+    /**
+     * Pushes the stashed View state to the Filament View.
+     */
+    void applyViewSettings();
+
 private:
     void updateIndirectLight();
 

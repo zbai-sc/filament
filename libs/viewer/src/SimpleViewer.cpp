@@ -368,13 +368,7 @@ void SimpleViewer::updateUserInterface() {
         ImGui::Unindent();
     }
 
-    mView->setDithering(mViewSettings.dithering);
-    mView->setAntiAliasing(mViewSettings.antiAliasing);
-    mView->setSampleCount(mViewSettings.sampleCount);
-    mView->setAmbientOcclusionOptions(mViewSettings.ssao);
-    mView->setBloomOptions(mViewSettings.bloom);
-    mView->setFogOptions(mViewSettings.fog);
-    mView->setTemporalAntiAliasingOptions(mViewSettings.taa);
+    applyViewSettings();
 
     if (mEnableSunlight) {
         mScene->addEntity(mSunlight);
@@ -439,6 +433,16 @@ void SimpleViewer::updateUserInterface() {
     ImGui::End();
 
     updateIndirectLight();
+}
+
+void SimpleViewer::applyViewSettings() {
+    mView->setDithering(mViewSettings.dithering);
+    mView->setAntiAliasing(mViewSettings.antiAliasing);
+    mView->setSampleCount(mViewSettings.sampleCount);
+    mView->setAmbientOcclusionOptions(mViewSettings.ssao);
+    mView->setBloomOptions(mViewSettings.bloom);
+    mView->setFogOptions(mViewSettings.fog);
+    mView->setTemporalAntiAliasingOptions(mViewSettings.taa);
 }
 
 } // namespace viewer

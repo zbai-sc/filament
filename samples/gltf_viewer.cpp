@@ -34,6 +34,11 @@
 #include <gltfio/FilamentAsset.h>
 #include <gltfio/ResourceLoader.h>
 
+#include <image/ColorTransform.h>
+
+#include <imageio/ImageEncoder.h>
+
+#include <viewer/Automation.h>
 #include <viewer/SimpleViewer.h>
 
 #include <camutils/Manipulator.h>
@@ -52,6 +57,7 @@
 
 #include <fstream>
 #include <iostream>
+#include <sstream>
 #include <string>
 
 #include "generated/resources/gltf_viewer.h"
@@ -61,6 +67,7 @@ using namespace filament::math;
 using namespace filament::viewer;
 
 using namespace gltfio;
+using namespace image;
 using namespace utils;
 
 struct App {
@@ -111,6 +118,20 @@ struct App {
 
     // 0 is the default "free camera". Additional cameras come from the gltf file.
     int currentCamera = 0;
+
+    std::string messageBoxText;
+    std::string settingsFile;
+
+    struct Automation {
+        AutomationList* settings = nullptr;
+        float sleepDuration = 1.5f;
+        bool exportScreenshots = true;
+        bool exportSettings = true;
+        bool enableWatermark = true;
+        size_t activeIndex;
+        bool isActive = false;
+        float elapsedTime;
+    } automation;
 };
 
 static const char* DEFAULT_IBL = "default_env";
@@ -132,6 +153,8 @@ static void printUsage(char* name) {
         "       Do not scale the model to fit into a unit cube\n\n"
         "   --recompute-aabb, -r\n"
         "       Ignore the min/max attributes in the glTF file\n\n"
+        "   --settings=<path to JSON file>, -t\n"
+        "       Apply the settings in the given JSON file.\n\n"
         "   --ubershader, -u\n"
         "       Enable ubershaders (improves load time, adds shader complexity)\n\n"
         "   --camera=<camera mode>, -c <camera mode>\n"
@@ -151,7 +174,7 @@ static void printUsage(char* name) {
 }
 
 static int handleCommandLineArguments(int argc, char* argv[], App* app) {
-    static constexpr const char* OPTSTR = "ha:i:usc:r";
+    static constexpr const char* OPTSTR = "ha:i:usc:rt:";
     static const struct option OPTIONS[] = {
         { "help",         no_argument,       nullptr, 'h' },
         { "api",          required_argument, nullptr, 'a' },
@@ -160,6 +183,7 @@ static int handleCommandLineArguments(int argc, char* argv[], App* app) {
         { "actual-size",  no_argument,       nullptr, 's' },
         { "camera",       required_argument, nullptr, 'c' },
         { "recompute-aabb", no_argument,     nullptr, 'r' },
+        { "settings",       optional_argument, nullptr, 't' },
         { nullptr, 0, nullptr, 0 }
     };
     int opt;
@@ -203,6 +227,12 @@ static int handleCommandLineArguments(int argc, char* argv[], App* app) {
             case 'r':
                 app->recomputeAabb = true;
                 break;
+            case 't':
+                if (arg.empty()) {
+                    arg = "settings.json";
+                }
+                app->settingsFile = arg;
+                break;
         }
     }
     return optind;
@@ -211,6 +241,19 @@ static int handleCommandLineArguments(int argc, char* argv[], App* app) {
 static std::ifstream::pos_type getFileSize(const char* filename) {
     std::ifstream in(filename, std::ifstream::ate | std::ifstream::binary);
     return in.tellg();
+}
+
+static bool loadSettings(const char* filename, Settings* out) {
+    auto contentSize = getFileSize(filename);
+    if (contentSize <= 0) {
+        return false;
+    }
+    std::ifstream in(filename, std::ifstream::binary | std::ifstream::in);
+    std::vector<char> json(static_cast<unsigned long>(contentSize));
+    if (!in.read(json.data(), contentSize)) {
+        return false;
+    }
+    return readJson(json.data(), contentSize, out);
 }
 
 static void createGroundPlane(Engine* engine, Scene* scene, App& app) {
@@ -545,6 +588,67 @@ static LinearColor inverseTonemapSRGB(sRGBColor x) {
     return (x * -0.155) / (x - 1.019);
 }
 
+struct ScreenshotState {
+    View* view;
+    std::string filename;
+};
+
+// TODO: use ColorTransform.h
+template<typename T>
+static LinearImage toLinear(size_t w, size_t h, size_t bpr, const uint8_t* src) {
+    LinearImage result(w, h, 3);
+    filament::math::float3* d = reinterpret_cast<filament::math::float3*>(result.getPixelRef(0, 0));
+    for (size_t y = 0; y < h; ++y) {
+        T const* p = reinterpret_cast<T const*>(src + y * bpr);
+        for (size_t x = 0; x < w; ++x, p += 3) {
+            filament::math::float3 sRGB(p[0], p[1], p[2]);
+            sRGB /= std::numeric_limits<T>::max();
+            *d++ = sRGBToLinear(sRGB);
+        }
+    }
+    return result;
+}
+
+static void grabScreenshot(App* app, View* view, Renderer* renderer) {
+    const Viewport& vp = view->getViewport();
+    auto& automation = app->automation;
+
+    // Determine the filename to use for the generated screenshot.
+    const int digits = (int) log10 ((double) automation.settings->size()) + 1;
+    std::ostringstream stringStream;
+    stringStream << "test"
+            << std::setfill('0') << std::setw(digits)
+            << std::to_string(automation.activeIndex) << "_"
+            << automation.settings->getName(automation.activeIndex)
+            << ".png";
+    std::string filename = stringStream.str();
+
+    // Create a buffer descriptor that writes the PNG after the data becomes ready on the CPU.
+    const size_t byteCount = vp.width * vp.height * 3;
+    backend::PixelBufferDescriptor buffer(
+        new uint8_t[byteCount], byteCount,
+        backend::PixelBufferDescriptor::PixelDataFormat::RGB,
+        backend::PixelBufferDescriptor::PixelDataType::UBYTE,
+        [](void* buffer, size_t size, void* user) {
+            ScreenshotState* state = static_cast<ScreenshotState*>(user);
+            const Viewport& vp = state->view->getViewport();
+            LinearImage image(toLinear<uint8_t>(vp.width, vp.height, vp.width * 3,
+                    static_cast<uint8_t*>(buffer)));
+            Path out(state->filename);
+            std::ofstream outputStream(out, std::ios::binary | std::ios::trunc);
+            ImageEncoder::encode(outputStream, ImageEncoder::Format::PNG, image, "",
+                    state->filename);
+            delete[] static_cast<uint8_t*>(buffer);
+            delete state;
+        },
+        new ScreenshotState { view, filename }
+    );
+
+    // Invoke readPixels asynchronously.
+    renderer->readPixels((uint32_t) vp.left, (uint32_t) vp.bottom, vp.width, vp.height,
+            std::move(buffer));
+}
+
 int main(int argc, char** argv) {
     App app;
 
@@ -633,6 +737,18 @@ int main(int argc, char** argv) {
         app.engine = engine;
         app.names = new NameComponentManager(EntityManager::get());
         app.viewer = new SimpleViewer(engine, scene, view, 410);
+
+        if (app.settingsFile.size() > 0) {
+            Settings settings;
+            bool success = loadSettings(app.settingsFile.c_str(), &settings);
+            if (success) {
+                std::cout << "Loaded settings from " << app.settingsFile << std::endl;
+                app.viewer->getViewSettings() = settings.view;
+            } else {
+                std::cerr << "Failed to load settings from " << app.settingsFile << std::endl;
+            }
+        }
+
         app.materials = (app.materialSource == GENERATE_SHADERS) ?
                 createMaterialGenerator(engine) : createUbershaderLoader(engine);
         app.loader = AssetLoader::create({engine, app.materials, app.names });
@@ -653,6 +769,54 @@ int main(int argc, char** argv) {
             float progress = app.resourceLoader->asyncGetLoadProgress();
             if (progress < 1.0) {
                 ImGui::ProgressBar(progress);
+            }
+
+            if (ImGui::CollapsingHeader("Automation")) {
+                auto& automation = app.automation;
+                if (!automation.settings) {
+                    automation.settings = AutomationList::generateDefaultTestCases();
+                }
+
+                const ImVec4 yellow(1.0f,1.0f,0.0f,1.0f);
+
+                ImGui::Indent();
+                ImGui::SliderFloat("Sleep (seconds)", &automation.sleepDuration, 0.0, 5.0);
+                if (ImGui::IsItemHovered()) {
+                    ImGui::SetTooltip("Specifies the amount of time to sleep between test cases.");
+                }
+                ImGui::Checkbox("Export screenshot for each test", &automation.exportScreenshots);
+                ImGui::Checkbox("Export settings JSON for each test", &automation.exportSettings);
+                ImGui::Checkbox("Include JSON filename in screenshot", &automation.enableWatermark);
+
+                if (automation.isActive) {
+                    ImGui::Text("Running test case %zu", automation.activeIndex);
+                } else  if (ImGui::Button("Run batch test")) {
+                    automation.activeIndex = 0;
+                    automation.isActive = true;
+                    automation.elapsedTime = 0;
+
+                    Settings settings;
+                    automation.settings->get(automation.activeIndex, &settings);
+                    app.viewer->getViewSettings() = settings.view;
+                }
+
+                ImGui::SameLine();
+                ImGui::TextColored(yellow, "%zu test cases", automation.settings->size());
+                if (ImGui::Button("Export view settings")) {
+                    Settings settings = {
+                        .view = app.viewer->getViewSettings()
+                    };
+                    std::string contents = writeJson(settings);
+                    std::ofstream out("settings.json");
+                    if (!out) {
+                        app.messageBoxText = "Failed to export settings file.";
+                    } else {
+                        out << contents << std::endl;
+                        app.messageBoxText = "Exported to 'settings.json' in the current folder.";
+                    }
+                    ImGui::OpenPopup("MessageBox");
+                }
+                ImGui::Unindent();
             }
 
             if (ImGui::CollapsingHeader("Stats")) {
@@ -721,6 +885,14 @@ int main(int argc, char** argv) {
             }
 
             colorGradingUI(app);
+
+            if (ImGui::BeginPopupModal("MessageBox", NULL, ImGuiWindowFlags_AlwaysAutoResize)) {
+                ImGui::Text("%s", app.messageBoxText.c_str());
+                if (ImGui::Button("OK", ImVec2(120, 0))) {
+                    ImGui::CloseCurrentPopup();
+                }
+                ImGui::EndPopup();
+            }
         });
 
         // Leave FXAA enabled but we also enable MSAA for a nice result. The wireframe looks
@@ -859,6 +1031,41 @@ int main(int argc, char** argv) {
         }
     };
 
+    auto postRender = [&app](Engine* engine, View* view, Scene* scene, Renderer* renderer) {
+        auto& automation = app.automation;
+
+        // If automation is not active, there's nothing to do.
+        if (!automation.isActive) {
+            return;
+        }
+
+        // If we are still sleeping between tests, return early.
+        automation.elapsedTime += ImGui::GetIO().DeltaTime;
+        if (automation.elapsedTime < automation.sleepDuration) {
+            return;
+        }
+
+        automation.elapsedTime = 0;
+
+        if (automation.exportScreenshots) {
+            grabScreenshot(&app, view, renderer);
+        }
+
+        if (automation.exportSettings) {
+            // TODO
+        }
+
+        // Increment the case number and apply the next round of settings.
+        automation.activeIndex++;
+        Settings settings;
+        if (!automation.settings->get(automation.activeIndex, &settings)) {
+            automation.isActive = false;
+        } else {
+            app.viewer->getViewSettings() = settings.view;
+            app.viewer->applyViewSettings();
+        }
+    };
+
     FilamentApp& filamentApp = FilamentApp::get();
     filamentApp.animate(animate);
     filamentApp.resize(resize);
@@ -870,7 +1077,7 @@ int main(int argc, char** argv) {
         loadResources(path);
     });
 
-    filamentApp.run(app.config, setup, cleanup, gui, preRender);
+    filamentApp.run(app.config, setup, cleanup, gui, preRender, postRender);
 
     return 0;
 }
