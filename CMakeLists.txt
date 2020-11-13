@@ -4,9 +4,24 @@
 cmake_minimum_required(VERSION 3.10)
 
 # ==================================================================================================
+# Hunter
+# ==================================================================================================
+
+include(cmake/HunterGate.cmake)
+HunterGate(
+    URL "https://github.com/cpp-pm/hunter/archive/v0.23.283.tar.gz"
+    SHA1 "f445fbb4716e5485e83f6acf110b51d3b8916b2c"
+    FILEPATH "${CMAKE_CURRENT_LIST_DIR}/cmake/HunterConfig.cmake"
+)
+
+if(HUNTER_ENABLED)
+  add_definitions(-DFILAMENT_USE_HUNTER)
+endif()
+
+# ==================================================================================================
 # Project declaration
 # ==================================================================================================
-project(TNT)
+project(TNT VERSION 1.9.8)
 
 # ==================================================================================================
 # Options
@@ -24,6 +39,10 @@ option(FILAMENT_SKIP_SAMPLES "Don't build samples" OFF)
 option(FILAMENT_SUPPORTS_XCB "Include XCB support in Linux builds" ON)
 
 option(FILAMENT_SUPPORTS_XLIB "Include XLIB support in Linux builds" ON)
+
+if(HUNTER_ENABLED)
+  option(HUNTER_FILAMENT_DISABLE_MATTOOLS "Disable matdbg and matinfo on host" ON)
+endif()
 
 set(FILAMENT_PER_RENDER_PASS_ARENA_SIZE_IN_MB "2" CACHE STRING
     "Per render pass arena size. Must be roughly 1 MB larger than FILAMENT_PER_FRAME_COMMANDS_SIZE_IN_MB, default 2."
@@ -234,16 +253,16 @@ endif()
 # ==================================================================================================
 # General compiler flags
 # ==================================================================================================
-set(CXX_STANDARD "-std=c++17")
-if (WIN32)
-    set(CXX_STANDARD "/std:c++17")
+# C++17 is required. On MSVC, C++20 is required.
+set(CMAKE_CXX_STANDARD "17")
+if (MSVC)
+    set(CMAKE_CXX_STANDARD "20")
 endif()
 
 if (MSVC)
-    set(CXX_STANDARD "/std:c++latest")
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${CXX_STANDARD} /W0 /Zc:__cplusplus")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /W0 /Zc:__cplusplus")
 else()
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${CXX_STANDARD} -fstrict-aliasing -Wno-unknown-pragmas -Wno-unused-function")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fstrict-aliasing -Wno-unknown-pragmas -Wno-unused-function")
 endif()
 
 if (FILAMENT_USE_EXTERNAL_GLES3)
@@ -270,7 +289,13 @@ if (LINUX)
     # Only linux, clang doesn't want to use a shared library that is not PIC.
     # /usr/bin/ld: ../bluegl/libbluegl.a(BlueGL.cpp.o): relocation R_X86_64_32S
     # against `.bss' can not be used when making a shared object; recompile with -fPIC
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fPIC")
+    if (NOT HUNTER_ENABLED)
+      set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fPIC")
+    endif()
+
+    if(CMAKE_CXX_COMPILER_ID STREQUAL "Clang" OR CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+      set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fno-builtin")
+    endif()
 
 endif()
 
@@ -353,6 +378,11 @@ if (APPLE)
     # prevents ar from invoking ranlib, let CMake do it
     set(CMAKE_C_ARCHIVE_CREATE   "<CMAKE_AR> qc -S <TARGET> <LINK_FLAGS> <OBJECTS>")
     set(CMAKE_CXX_ARCHIVE_CREATE "<CMAKE_AR> qc -S <TARGET> <LINK_FLAGS> <OBJECTS>")
+endif()
+
+if(MSVC)
+    set(GC_SECTIONS "")
+    set(B_SYMBOLIC_FUNCTIONS "")
 endif()
 
 set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} ${GC_SECTIONS}")
@@ -445,6 +475,50 @@ if (NOT DIST_ARCH)
 endif()
 if (NOT DIST_DIR)
     set(DIST_DIR "${DIST_ARCH}")
+endif()
+
+
+# ==================================================================================================
+# Config files
+# ==================================================================================================
+if(HUNTER_ENABLED)
+  set(PROJECT_NAME filament)
+  set(CONFIG_INSTALL_DIR "lib/cmake/${PROJECT_NAME}")
+  set(INCLUDE_INSTALL_DIR "include")
+
+  set(GENERATED_DIR "${CMAKE_CURRENT_BINARY_DIR}/generated")
+
+  # Configuration
+  set(VERSION_CONFIG "${GENERATED_DIR}/${PROJECT_NAME}ConfigVersion.cmake")
+  set(PROJECT_CONFIG "${GENERATED_DIR}/${PROJECT_NAME}Config.cmake")
+  set(TARGETS_EXPORT_NAME "${PROJECT_NAME}Targets")
+  set(NAMESPACE "${PROJECT_NAME}::")
+
+  # Include module with fuction 'write_basic_package_version_file'
+  include(CMakePackageConfigHelpers)
+
+  # Note: PROJECT_VERSION is used as a VERSION
+  write_basic_package_version_file("${VERSION_CONFIG}" COMPATIBILITY SameMajorVersion)
+
+  # Use variables:
+  #   * TARGETS_EXPORT_NAME
+  #   * PROJECT_NAME
+  configure_package_config_file(
+      "cmake/filament-hunter-config.cmake.in"
+      "${PROJECT_CONFIG}"
+      INSTALL_DESTINATION "${CONFIG_INSTALL_DIR}"
+  )
+
+  install(
+      FILES "${PROJECT_CONFIG}" "${VERSION_CONFIG}"
+      DESTINATION "${CONFIG_INSTALL_DIR}"
+  )
+
+  install(
+      EXPORT "${TARGETS_EXPORT_NAME}"
+      NAMESPACE "${NAMESPACE}"
+      DESTINATION "${CONFIG_INSTALL_DIR}"
+  )
 endif()
 
 # ==================================================================================================
@@ -562,8 +636,73 @@ endfunction()
 # Sub-projects
 # ==================================================================================================
 
+if(HUNTER_ENABLED)
+  hunter_add_package(GTest)
+  find_package(GTest CONFIG REQUIRED)
+  hunter_add_package(tsl_hat_trie)
+  find_package(tsl_hat_trie CONFIG REQUIRED)
+  hunter_add_package(tsl_robin_map)
+  find_package(tsl-robin-map CONFIG REQUIRED)
+  hunter_add_package(smol-v)
+  find_package(smol-v CONFIG REQUIRED)
+  hunter_add_package(benchmark)
+  find_package(benchmark CONFIG REQUIRED)
+  hunter_add_package(meshoptimizer)
+  find_package(meshoptimizer CONFIG REQUIRED)
+  hunter_add_package(cgltf)
+  find_package(cgltf CONFIG REQUIRED)
+  hunter_add_package(draco)
+  find_package(draco CONFIG REQUIRED)
+  hunter_add_package(stb)
+  find_package(stb CONFIG REQUIRED)
+  if(MSVC)
+    hunter_add_package(getopt)
+    find_package(getopt CONFIG REQUIRED)
+  endif()
+  if (IS_HOST_PLATFORM)
+    hunter_add_package(astc-encoder)
+    find_package(astc-encoder CONFIG REQUIRED)
+    hunter_add_package(etc2comp)
+    find_package(etc2comp CONFIG REQUIRED)
+    hunter_add_package(imgui)
+    find_package(imgui CONFIG REQUIRED)
+    hunter_add_package(Assimp)
+    find_package(Assimp CONFIG REQUIRED)
+    hunter_add_package(jsmn)
+    find_package(jsmn CONFIG REQUIRED)
+    hunter_add_package(PNG)
+    find_package(PNG CONFIG REQUIRED)
+    hunter_add_package(SDL2)
+    find_package(SDL2 CONFIG REQUIRED)
+    hunter_add_package(ZLIB)
+    find_package(ZLIB CONFIG REQUIRED)
+    hunter_add_package(tinyexr)
+    find_package(tinyexr CONFIG REQUIRED)
+  endif(IS_HOST_PLATFORM)
+
+  if (FILAMENT_BUILD_FILAMAT OR IS_HOST_PLATFORM)
+    hunter_add_package(SPIRV-Tools)
+    find_package(SPIRV-Tools CONFIG REQUIRED)
+    find_package(SPIRV-Tools-opt CONFIG REQUIRED)
+    hunter_add_package(glslang)
+    find_package(glslang CONFIG REQUIRED)
+    hunter_add_package(spirv-cross)
+    find_package(spirv_cross_core CONFIG REQUIRED)
+    find_package(spirv_cross_glsl CONFIG REQUIRED)
+    find_package(spirv_cross_msl CONFIG REQUIRED)
+    if (FILAMENT_ENABLE_MATDBG OR IS_HOST_PLATFORM)
+      if (NOT HUNTER_FILAMENT_DISABLE_MATTOOLS)
+        hunter_add_package(civetweb)
+        find_package(civetweb CONFIG REQUIRED)
+      endif()
+    endif()
+  endif()
+endif()
+
 # Common to all platforms
-add_subdirectory(${EXTERNAL}/libgtest/tnt)
+if(NOT HUNTER_ENABLED)
+  add_subdirectory(${EXTERNAL}/libgtest/tnt)
+endif()
 add_subdirectory(${LIBRARIES}/camutils)
 add_subdirectory(${LIBRARIES}/filabridge)
 add_subdirectory(${LIBRARIES}/filaflat)
@@ -577,28 +716,36 @@ add_subdirectory(${LIBRARIES}/mathio)
 add_subdirectory(${LIBRARIES}/utils)
 add_subdirectory(${FILAMENT}/filament)
 add_subdirectory(${FILAMENT}/shaders)
-add_subdirectory(${EXTERNAL}/hat-trie/tnt)
-add_subdirectory(${EXTERNAL}/robin-map/tnt)
-add_subdirectory(${EXTERNAL}/smol-v/tnt)
-add_subdirectory(${EXTERNAL}/benchmark/tnt)
-add_subdirectory(${EXTERNAL}/meshoptimizer)
-add_subdirectory(${EXTERNAL}/cgltf/tnt)
-add_subdirectory(${EXTERNAL}/draco/tnt)
-add_subdirectory(${EXTERNAL}/stb/tnt)
-add_subdirectory(${EXTERNAL}/getopt)
+if(NOT HUNTER_ENABLED)
+  add_subdirectory(${EXTERNAL}/hat-trie/tnt)
+  add_subdirectory(${EXTERNAL}/robin-map/tnt)
+  add_subdirectory(${EXTERNAL}/smol-v/tnt)
+  add_subdirectory(${EXTERNAL}/benchmark/tnt)
+  add_subdirectory(${EXTERNAL}/meshoptimizer)
+  add_subdirectory(${EXTERNAL}/cgltf/tnt)
+  add_subdirectory(${EXTERNAL}/draco/tnt)
+  add_subdirectory(${EXTERNAL}/stb/tnt)
+  add_subdirectory(${EXTERNAL}/getopt)
+endif()
 
 if (FILAMENT_BUILD_FILAMAT OR IS_HOST_PLATFORM)
     # spirv-tools must come before filamat, as filamat relies on the presence of the
     # spirv-tools_SOURCE_DIR variable.
-    add_subdirectory(${EXTERNAL}/spirv-tools)
-    add_subdirectory(${EXTERNAL}/glslang/tnt)
-    add_subdirectory(${EXTERNAL}/spirv-cross/tnt)
+    if(NOT HUNTER_ENABLED)
+      add_subdirectory(${EXTERNAL}/spirv-tools)
+      add_subdirectory(${EXTERNAL}/glslang/tnt)
+      add_subdirectory(${EXTERNAL}/spirv-cross/tnt)
+    endif()
     add_subdirectory(${LIBRARIES}/filamat)
 
     # the material debugger requires filamat
     if (FILAMENT_ENABLE_MATDBG OR IS_HOST_PLATFORM)
-        add_subdirectory(${EXTERNAL}/civetweb/tnt)
-        add_subdirectory(${LIBRARIES}/matdbg)
+        if(NOT HUNTER_ENABLED)
+          add_subdirectory(${EXTERNAL}/civetweb/tnt)
+        endif()
+        if(NOT HUNTER_FILAMENT_DISABLE_MATTOOLS)
+          add_subdirectory(${LIBRARIES}/matdbg)
+        endif()
     endif()
 endif()
 
@@ -630,23 +777,26 @@ if (IS_HOST_PLATFORM)
     add_subdirectory(${FILAMENT}/java/gltfio)
 
     add_subdirectory(${FILAMENT}/samples)
-
-    add_subdirectory(${EXTERNAL}/astcenc/tnt)
-    add_subdirectory(${EXTERNAL}/etc2comp)
-    add_subdirectory(${EXTERNAL}/imgui/tnt)
-    add_subdirectory(${EXTERNAL}/jsmn/tnt)
-    add_subdirectory(${EXTERNAL}/libassimp/tnt)
-    add_subdirectory(${EXTERNAL}/libpng/tnt)
-    add_subdirectory(${EXTERNAL}/libsdl2/tnt)
-    add_subdirectory(${EXTERNAL}/libz/tnt)
-    add_subdirectory(${EXTERNAL}/tinyexr/tnt)
+    if(NOT HUNTER_ENABLED)
+      add_subdirectory(${EXTERNAL}/astcenc/tnt)
+      add_subdirectory(${EXTERNAL}/etc2comp)
+      add_subdirectory(${EXTERNAL}/imgui/tnt)
+      add_subdirectory(${EXTERNAL}/jsmn/tnt)
+      add_subdirectory(${EXTERNAL}/libassimp/tnt)
+      add_subdirectory(${EXTERNAL}/libpng/tnt)
+      add_subdirectory(${EXTERNAL}/libsdl2/tnt)
+      add_subdirectory(${EXTERNAL}/libz/tnt)
+      add_subdirectory(${EXTERNAL}/tinyexr/tnt)
+    endif(NOT HUNTER_ENABLED)
 
     add_subdirectory(${TOOLS}/cmgen)
     add_subdirectory(${TOOLS}/cso-lut)
     add_subdirectory(${TOOLS}/filamesh)
     add_subdirectory(${TOOLS}/glslminifier)
     add_subdirectory(${TOOLS}/matc)
-    add_subdirectory(${TOOLS}/matinfo)
+    if (NOT HUNTER_FILAMENT_DISABLE_MATTOOLS)
+      add_subdirectory(${TOOLS}/matinfo)
+    endif()
     add_subdirectory(${TOOLS}/mipgen)
     add_subdirectory(${TOOLS}/normal-blending)
     add_subdirectory(${TOOLS}/resgen)
