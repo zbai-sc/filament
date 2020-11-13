@@ -181,14 +181,28 @@ include_directories(src)
 add_library(${TARGET} STATIC ${PRIVATE_HDRS} ${PUBLIC_HDRS} ${SRCS})
 
 # specify where the public headers of this library are
-target_include_directories(${TARGET} PUBLIC ${PUBLIC_HDR_DIR})
+if(HUNTER_ENABLED)
+  target_include_directories(${TARGET} PUBLIC  
+      $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/${PUBLIC_HDR_DIR}>  
+      $<INSTALL_INTERFACE:${PUBLIC_HDR_DIR}>)
+else()
+  target_include_directories(${TARGET} PUBLIC ${PUBLIC_HDR_DIR})
+endif()
 
 # ==================================================================================================
 # Expose a header-only target to minimize dependencies.
 # ==================================================================================================
 
 add_library(${TARGET}_headers INTERFACE)
-target_include_directories(${TARGET}_headers INTERFACE ${PUBLIC_HDR_DIR})
+if(HUNTER_ENABLED)
+  target_include_directories(${TARGET}_headers INTERFACE  
+  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/${PUBLIC_HDR_DIR}>  
+  $<INSTALL_INTERFACE:include>)
+else()
+  target_include_directories(${TARGET}_headers INTERFACE ${PUBLIC_HDR_DIR})
+endif()
+
+
 
 # ==================================================================================================
 # Dependencies
@@ -283,7 +297,12 @@ target_link_libraries(${TARGET} PRIVATE
 # Installation
 # ==================================================================================================
 set(INSTALL_TYPE ARCHIVE)
-install(TARGETS ${TARGET} ${INSTALL_TYPE} DESTINATION lib/${DIST_DIR})
+if(HUNTER_ENABLED)
+  install(TARGETS ${TARGET} EXPORT ${TARGETS_EXPORT_NAME} ${INSTALL_TYPE} DESTINATION lib/${DIST_DIR})
+  install(TARGETS ${TARGET}_headers EXPORT ${TARGETS_EXPORT_NAME})
+else()
+  install(TARGETS ${TARGET} ${INSTALL_TYPE} DESTINATION lib/${DIST_DIR})
+endif()
 install(DIRECTORY ${PUBLIC_HDR_DIR}/backend DESTINATION include)
 
 # ==================================================================================================
@@ -302,15 +321,34 @@ if (APPLE)
         test/test_BufferUpdates.cpp
         test/test_MRT.cpp)
 
-    target_link_libraries(backend_test PRIVATE
-        backend
-        filabridge
-        getopt
-        gtest
-        SPIRV
-        spirv-cross-glsl)
+    if(HUNTER_ENABLED)
+        target_link_libraries(backend_test PRIVATE
+            backend
+            filabridge
+            GTest::gtest
+            glslang::SPIRV
+            spirv-cross-glsl
+            glslang::OGLCompiler
+            glslang::OSDependent
+            SPIRV-Tools::SPIRV-Tools
+            SPIRV-Tools::SPIRV-Tools-opt
+            glslang::glslang
+            spirv-cross-core
+            spirv-cross-msl)
 
-    set(BACKEND_TEST_DEPS
+            if (NOT IOS)
+                target_link_libraries(backend_test PRIVATE image imageio)
+            endif()
+    else()
+        target_link_libraries(backend_test PRIVATE
+            backend
+            filabridge
+            getopt
+            gtest
+            SPIRV
+            spirv-cross-glsl)
+
+        set(BACKEND_TEST_DEPS
             OGLCompiler
             OSDependent
             SPIRV
@@ -323,8 +361,7 @@ if (APPLE)
             glslang
             spirv-cross-core
             spirv-cross-glsl
-            spirv-cross-msl
-            )
+            spirv-cross-msl)
 
     if (NOT IOS)
         target_link_libraries(backend_test PRIVATE image imageio)
@@ -334,10 +371,18 @@ if (APPLE)
     set(BACKEND_TEST_COMBINED_OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/libbackendtest_combined.a")
     combine_static_libs(backend_test "${BACKEND_TEST_COMBINED_OUTPUT}" "${BACKEND_TEST_DEPS}")
 
-    set(BACKEND_TEST_LIB_NAME ${CMAKE_STATIC_LIBRARY_PREFIX}backend_test${CMAKE_STATIC_LIBRARY_SUFFIX})
+        set(BACKEND_TEST_COMBINED_OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/libbackendtest_combined.a")
+        combine_static_libs(backend_test "${BACKEND_TEST_COMBINED_OUTPUT}" "${BACKEND_TEST_DEPS}")
+
+        set(BACKEND_TEST_LIB_NAME ${CMAKE_STATIC_LIBRARY_PREFIX}backend_test${CMAKE_STATIC_LIBRARY_SUFFIX})
+    endif()
 
     if (INSTALL_BACKEND_TEST)
-        install(FILES "${BACKEND_TEST_COMBINED_OUTPUT}" DESTINATION lib/${DIST_DIR} RENAME ${BACKEND_TEST_LIB_NAME})
+        if(HUNTER_ENABLED)
+            install(TARGETS backend_test EXPORT ${TARGETS_EXPORT_NAME} ARCHIVE DESTINATION lib/${DIST_DIR})
+        else()
+            install(FILES "${BACKEND_TEST_COMBINED_OUTPUT}" DESTINATION lib/${DIST_DIR} RENAME ${BACKEND_TEST_LIB_NAME})
+        endif()
         install(FILES test/PlatformRunner.h DESTINATION include/backend_test)
     endif()
 endif()
