@@ -229,7 +229,11 @@ if(NOT IOS AND NOT ANDROID AND NOT WEBGL)
 endif()
 
 if (FILAMENT_SUPPORTS_VULKAN)
-    target_link_libraries(${TARGET} PUBLIC bluevk vkmemalloc)
+    if(HUNTER_ENABLED)
+        target_link_libraries(${TARGET} PUBLIC bluevk VulkanMemoryAllocator::VulkanMemoryAllocator)
+    else()
+        target_link_libraries(${TARGET} PUBLIC bluevk vkmemalloc)
+    endif()
 endif()
 
 if (FILAMENT_SUPPORTS_METAL)

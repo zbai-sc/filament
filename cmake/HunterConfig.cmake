@@ -11,3 +11,5 @@ hunter_config(glslang VERSION 8.13.3743-9eef54b2-p0
               CMAKE_ARGS ENABLE_HLSL=OFF ENABLE_GLSLANG_BINARIES=OFF ENABLE_OPT=OFF BUILD_TESTING=OFF)
 
 hunter_config(astc-encoder VERSION 1.3-a47b80f-p1)
+
+hunter_config(VulkanMemoryAllocator VERSION 2.3.0-p0)

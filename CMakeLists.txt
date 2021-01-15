@@ -9,8 +9,8 @@ cmake_minimum_required(VERSION 3.10)
 
 include(cmake/HunterGate.cmake)
 HunterGate(
-    URL "https://github.com/cpp-pm/hunter/archive/v0.23.283.tar.gz"
-    SHA1 "f445fbb4716e5485e83f6acf110b51d3b8916b2c"
+    URL "https://github.com/cpp-pm/hunter/archive/v0.23.290.tar.gz"
+    SHA1 "04487198159a9754ac9603aa464cd3de23ca3f3d"
     FILEPATH "${CMAKE_CURRENT_LIST_DIR}/cmake/HunterConfig.cmake"
 )
 
@@ -701,6 +701,11 @@ if(HUNTER_ENABLED)
       endif()
     endif()
   endif()
+
+  if (FILAMENT_SUPPORTS_VULKAN)
+    hunter_add_package(VulkanMemoryAllocator)
+    find_package(VulkanMemoryAllocator CONFIG REQUIRED)
+  endif()
 endif()
 
 # Common to all platforms
@@ -755,7 +760,9 @@ endif()
 
 if (FILAMENT_SUPPORTS_VULKAN)
     add_subdirectory(${LIBRARIES}/bluevk)
-    add_subdirectory(${EXTERNAL}/vkmemalloc/tnt)
+    if(NOT HUNTER_ENABLED)
+        add_subdirectory(${EXTERNAL}/vkmemalloc/tnt)
+    endif()
 endif()
 
 if (APPLE)

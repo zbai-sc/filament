@@ -32,7 +32,11 @@ static const PFN_vkGetDeviceProcAddr& vkGetDeviceProcAddr = bluevk::vkGetDeviceP
 #define VMA_DYNAMIC_VULKAN_FUNCTIONS 1
 #define VMA_IMPLEMENTATION
 #include <cstdio>
+#ifdef FILAMENT_USE_HUNTER
 #include "vk_mem_alloc.h"
+#else
+#include "vk_mem_alloc.h"
+#endif
 #pragma clang diagnostic pop
 
 #include "VulkanContext.h"
