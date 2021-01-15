@@ -38,7 +38,11 @@ endif()
 # test_bluevk is not supported on mobile or Windows
 if (NOT ANDROID AND NOT IOS AND NOT WIN32)
     add_executable(test_bluevk tests/test_bluevk_sdl.cpp)
-    target_link_libraries(test_bluevk PRIVATE dl bluevk sdl2)
+    if(HUNTER_ENABLED)
+    target_link_libraries(test_bluevk PRIVATE dl bluevk SDL2::SDL2)
+    else ()
+      target_link_libraries(test_bluevk PRIVATE dl bluevk sdl2)
+    endif()
 endif()
 
 if(HUNTER_ENABLED)

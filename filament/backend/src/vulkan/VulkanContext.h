@@ -26,7 +26,11 @@
 
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wundef"
+#ifdef FILAMENT_USE_HUNTER
 #include "vk_mem_alloc.h"
+#else
+#include "vk_mem_alloc.h"
+#endif
 #pragma clang diagnostic pop
 
 #include <utils/Condition.h>

@@ -27,7 +27,11 @@
 #pragma clang diagnostic ignored "-Wimplicit-fallthrough"
 #define VMA_IMPLEMENTATION
 #include <cstdio>
+#ifdef FILAMENT_USE_HUNTER
 #include "vk_mem_alloc.h"
+#else
+#include "vk_mem_alloc.h"
+#endif
 #pragma clang diagnostic pop
 
 #include "VulkanContext.h"
