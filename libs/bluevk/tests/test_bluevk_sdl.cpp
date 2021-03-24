@@ -23,8 +23,13 @@
 #include <string.h>
 #include <math.h>
 
+#ifdef FILAMENT_USE_HUNTER
+#include "SDL2/SDL.h"
+#include "SDL2/SDL_vulkan.h"
+#else
 #include "SDL.h"
 #include "SDL_vulkan.h"
+#endif
 
 #include <bluevk/BlueVK.h>
 
