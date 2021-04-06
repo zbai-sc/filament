@@ -9,8 +9,8 @@ cmake_minimum_required(VERSION 3.10)
 
 include(cmake/HunterGate.cmake)
 HunterGate(
-    URL "https://github.com/cpp-pm/hunter/archive/v0.23.290.tar.gz"
-    SHA1 "04487198159a9754ac9603aa464cd3de23ca3f3d"
+    URL "https://github.com/cpp-pm/hunter/archive/v0.23.297.tar.gz"
+    SHA1 "3319fe6a3b08090df7df98dee75134d68e2ef5a3"
     FILEPATH "${CMAKE_CURRENT_LIST_DIR}/cmake/HunterConfig.cmake"
 )
 
@@ -21,7 +21,7 @@ endif()
 # ==================================================================================================
 # Project declaration
 # ==================================================================================================
-project(TNT VERSION 1.9.17)
+project(TNT VERSION 1.9.19)
 
 # ==================================================================================================
 # Options
@@ -683,6 +683,17 @@ if(HUNTER_ENABLED)
     hunter_add_package(tinyexr)
     find_package(tinyexr CONFIG REQUIRED)
   endif()
+  if (FILAMENT_BUILD_FILAMAT OR IS_HOST_PLATFORM)
+    hunter_add_package(SPIRV-Tools)
+    find_package(SPIRV-Tools CONFIG REQUIRED)
+    find_package(SPIRV-Tools-opt CONFIG REQUIRED)
+    hunter_add_package(glslang)
+    find_package(glslang CONFIG REQUIRED)
+    hunter_add_package(spirv-cross)
+    find_package(spirv_cross_core CONFIG REQUIRED)
+    find_package(spirv_cross_glsl CONFIG REQUIRED)
+    find_package(spirv_cross_msl CONFIG REQUIRED)
+  endif()
   if (FILAMENT_SUPPORTS_VULKAN)
     hunter_add_package(VulkanMemoryAllocator)
     find_package(VulkanMemoryAllocator CONFIG REQUIRED)
@@ -726,17 +737,7 @@ endif()
 if (FILAMENT_BUILD_FILAMAT OR IS_HOST_PLATFORM)
     # spirv-tools must come before filamat, as filamat relies on the presence of the
     # spirv-tools_SOURCE_DIR variable.
-    if(HUNTER_ENABLED)
-      hunter_add_package(SPIRV-Tools)
-      find_package(SPIRV-Tools CONFIG REQUIRED)
-      find_package(SPIRV-Tools-opt CONFIG REQUIRED)
-      hunter_add_package(glslang)
-      find_package(glslang CONFIG REQUIRED)
-      hunter_add_package(spirv-cross)
-      find_package(spirv_cross_core CONFIG REQUIRED)
-      find_package(spirv_cross_glsl CONFIG REQUIRED)
-      find_package(spirv_cross_msl CONFIG REQUIRED)
-    else()
+    if(NOT HUNTER_ENABLED)
       add_subdirectory(${EXTERNAL}/spirv-tools)
       add_subdirectory(${EXTERNAL}/glslang/tnt)
       add_subdirectory(${EXTERNAL}/spirv-cross/tnt)
