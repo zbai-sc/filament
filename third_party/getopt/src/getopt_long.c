@@ -27,7 +27,11 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include "getopt/getopt.h"
+#if defined (_MSC_VER) || !defined (FILAMENT_USE_HUNTER)
+#include <getopt/getopt.h>
+#else
+#include <getopt.h>
+#endif
 
 #include <assert.h>
 #include <errno.h>
