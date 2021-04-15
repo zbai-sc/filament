@@ -86,6 +86,20 @@ Driver* PlatformEGL::createDriver(void* sharedContext) noexcept {
 
     EGLint major, minor;
     EGLBoolean initialized = eglInitialize(mEGLDisplay, &major, &minor);
+
+    if(!initialized) {
+      EGLDeviceEXT eglDevice;
+      EGLint numDevices;
+
+      PFNEGLQUERYDEVICESEXTPROC eglQueryDevicesEXT = 
+              (PFNEGLQUERYDEVICESEXTPROC)eglGetProcAddress("eglQueryDevicesEXT");
+      if (eglQueryDevicesEXT != NULL) {
+          eglQueryDevicesEXT(1, &eglDevice, &numDevices);
+          mEGLDisplay = eglGetPlatformDisplay(EGL_PLATFORM_DEVICE_EXT, eglDevice, 0);
+          initialized = eglInitialize(mEGLDisplay, &major, &minor);
+      }
+    }
+
     if (UTILS_UNLIKELY(!initialized)) {
         slog.e << "eglInitialize failed" << io::endl;
         return nullptr;
