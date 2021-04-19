@@ -7,6 +7,8 @@ A new header is inserted each time a *tag* is created.
 
 - engine: Add new `Renderer::renderStandaloneView()` API.
 
+## v1.9.22
+
 ## v1.9.21
 
 - JavaScript: add missing TextureSampler bindings.
