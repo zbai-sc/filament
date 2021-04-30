@@ -9,8 +9,8 @@ cmake_minimum_required(VERSION 3.10)
 
 include(cmake/HunterGate.cmake)
 HunterGate(
-    URL "https://github.com/cpp-pm/hunter/archive/v0.23.297.tar.gz"
-    SHA1 "3319fe6a3b08090df7df98dee75134d68e2ef5a3"
+    URL "https://github.com/cpp-pm/hunter/archive/v0.23.299.tar.gz"
+    SHA1 "3d215b4bfac80824778fe9a93510e5f651d79e3a"
     FILEPATH "${CMAKE_CURRENT_LIST_DIR}/cmake/HunterConfig.cmake"
 )
 
@@ -21,7 +21,7 @@ endif()
 # ==================================================================================================
 # Project declaration
 # ==================================================================================================
-project(TNT VERSION 1.9.20)
+project(TNT VERSION 1.9.22)
 
 # ==================================================================================================
 # Options

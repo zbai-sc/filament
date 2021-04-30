@@ -14,6 +14,4 @@ hunter_config(astc-encoder VERSION 1.3-a47b80f-p1)
 
 hunter_config(VulkanMemoryAllocator VERSION 2.3.0-p0)
 
-hunter_config(cgltf 
-    URL "https://github.com/elisemorysc/cgltf/archive/hunter-v1.10.tar.gz"
-    SHA1 f409d4e15be8722e4e48a230ad89abd7fd812adb)
+hunter_config(cgltf VERSION 1.10-p0)
