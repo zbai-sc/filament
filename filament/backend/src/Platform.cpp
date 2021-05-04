@@ -148,7 +148,7 @@ DefaultPlatform* DefaultPlatform::create(Backend* backend) noexcept {
                 return new PlatformEGLOpenGL();
             #else
                 return new PlatformGLX();
-        #endif
+            #endif
         #elif defined(WIN32)
             return new PlatformWGL();
         #elif defined(__EMSCRIPTEN__)
