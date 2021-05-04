@@ -117,17 +117,26 @@ DefaultPlatform* DefaultPlatform::create(Backend* backend) noexcept {
         return nullptr;
 #endif
     }
-    #if defined(FILAMENT_USE_EXTERNAL_GLES3) || defined(FILAMENT_USE_SWIFTSHADER)
-        return nullptr;
-    #elif defined(ANDROID)
-        return new PlatformEGLAndroid();
-    #elif defined(IOS)
-        return new PlatformCocoaTouchGL();
-    #elif defined(__APPLE__)
-        return new PlatformCocoaGL();
-    #elif defined(__linux__)
-        #if defined(FILAMENT_USE_EGL_OPENGL)
-           return new PlatformEGLOpenGL();
+    assert_invariant(*backend == Backend::OPENGL);
+    #if defined(FILAMENT_SUPPORTS_OPENGL)
+        #if defined(FILAMENT_USE_EXTERNAL_GLES3) || defined(FILAMENT_USE_SWIFTSHADER)
+            return nullptr;
+        #elif defined(ANDROID)
+            return new PlatformEGLAndroid();
+        #elif defined(IOS)
+            return new PlatformCocoaTouchGL();
+        #elif defined(__APPLE__)
+            return new PlatformCocoaGL();
+        #elif defined(__linux__)
+            #if defined(FILAMENT_USE_EGL_OPENGL)
+                return new PlatformEGLOpenGL();
+            #else
+                return new PlatformGLX();
+        #endif
+        #elif defined(WIN32)
+            return new PlatformWGL();
+        #elif defined(__EMSCRIPTEN__)
+            return new PlatformWebGL();
         #else
            return new PlatformGLX();
         #endif
