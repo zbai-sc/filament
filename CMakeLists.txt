@@ -25,6 +25,8 @@ option(FILAMENT_SUPPORTS_XCB "Include XCB support in Linux builds" ON)
 
 option(FILAMENT_SUPPORTS_XLIB "Include XLIB support in Linux builds" ON)
 
+option(FILAMENT_USE_EGL_OPENGL "Use EGL for OpenGL in Linux builds" OFF)
+
 set(FILAMENT_PER_RENDER_PASS_ARENA_SIZE_IN_MB "2" CACHE STRING
     "Per render pass arena size. Must be roughly 1 MB larger than FILAMENT_PER_FRAME_COMMANDS_SIZE_IN_MB, default 2."
 )
@@ -94,6 +96,10 @@ if (LINUX)
 
     if (FILAMENT_SUPPORTS_XLIB)
         add_definitions(-DFILAMENT_SUPPORTS_XLIB)
+    endif()
+
+    if(FILAMENT_USE_EGL_OPENGL)
+        add_definitions(-DFILAMENT_USE_EGL_OPENGL)
     endif()
 endif()
 
@@ -239,6 +245,10 @@ endif()
 
 if (FILAMENT_USE_EXTERNAL_GLES3)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DUSE_EXTERNAL_GLES3")
+endif()
+
+if (FILAMENT_USE_EGL_OPENGL)
+  set(EGL TRUE)
 endif()
 
 if (FILAMENT_USE_SWIFTSHADER)
