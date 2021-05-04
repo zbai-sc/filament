@@ -138,10 +138,10 @@ DefaultPlatform* DefaultPlatform::create(Backend* backend) noexcept {
         #elif defined(__APPLE__)
             return new PlatformCocoaGL();
         #elif defined(__linux__)
-        #if defined(FILAMENT_USE_EGL_OPENGL)
-           return new PlatformEGLOpenGL();
-        #else
-           return new PlatformGLX();
+            #if defined(FILAMENT_USE_EGL_OPENGL)
+                return new PlatformEGLOpenGL();
+            #else
+                return new PlatformGLX();
         #endif
         #elif defined(WIN32)
             return new PlatformWGL();
