@@ -297,9 +297,9 @@ endif()
 
 if (FILAMENT_SUPPORTS_VULKAN)
     if(HUNTER_ENABLED)
-        target_link_libraries(${TARGET} PUBLIC bluevk VulkanMemoryAllocator::VulkanMemoryAllocator vkshaders)
+        target_link_libraries(${TARGET} PUBLIC bluevk VulkanMemoryAllocator::VulkanMemoryAllocator vkshaders smol-v)
     else()
-        target_link_libraries(${TARGET} PUBLIC bluevk vkmemalloc vkshaders)
+        target_link_libraries(${TARGET} PUBLIC bluevk vkmemalloc vkshaders smol-v)
     endif()
 endif()
 
