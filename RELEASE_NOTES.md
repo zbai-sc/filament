@@ -5,6 +5,8 @@ A new header is inserted each time a *tag* is created.
 
 ## Next release (main branch)
 
+- engine: new screen-space lens flare
+
 ## v1.9.24
 
 - engine: Fix memory leaks in OpenGL driver.
