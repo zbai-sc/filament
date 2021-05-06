@@ -19,24 +19,9 @@ if(HUNTER_ENABLED)
 endif()
 
 # ==================================================================================================
-# Hunter
-# ==================================================================================================
-
-include(cmake/HunterGate.cmake)
-HunterGate(
-    URL "https://github.com/cpp-pm/hunter/archive/v0.23.300.tar.gz"
-    SHA1 "1151d539465d9cdbc880ee30f794864aec11c448"
-    FILEPATH "${CMAKE_CURRENT_LIST_DIR}/cmake/HunterConfig.cmake"
-)
-
-if(HUNTER_ENABLED)
-  add_definitions(-DFILAMENT_USE_HUNTER)
-endif()
-
-# ==================================================================================================
 # Project declaration
 # ==================================================================================================
-project(TNT VERSION 1.10.1)
+project(TNT VERSION 1.10.4)
 
 # ==================================================================================================
 # Options
