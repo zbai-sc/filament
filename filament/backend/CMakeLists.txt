@@ -150,6 +150,7 @@ if (FILAMENT_SUPPORTS_VULKAN)
             src/vulkan/VulkanBuffer.h
             src/vulkan/VulkanCommands.cpp
             src/vulkan/VulkanCommands.h
+            src/vulkan/VulkanConstants.h
             src/vulkan/VulkanContext.cpp
             src/vulkan/VulkanContext.h
             src/vulkan/VulkanDisposer.cpp
@@ -168,6 +169,8 @@ if (FILAMENT_SUPPORTS_VULKAN)
             src/vulkan/VulkanSamplerCache.h
             src/vulkan/VulkanStagePool.cpp
             src/vulkan/VulkanStagePool.h
+            src/vulkan/VulkanTexture.cpp
+            src/vulkan/VulkanTexture.h
             src/vulkan/VulkanUtility.cpp
             src/vulkan/VulkanUtility.h
     )
