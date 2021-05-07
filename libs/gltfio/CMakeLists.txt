@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.10)
+cmake_minimum_required(VERSION 3.19)
 project(gltfio C ASM)
 
 set(TARGET gltfio)
@@ -14,6 +14,7 @@ set(PUBLIC_HDRS
         include/gltfio/ResourceLoader.h
         include/gltfio/FilamentAsset.h
         include/gltfio/FilamentInstance.h
+        include/gltfio/ReusableAnimator.h
 )
 
 set(SRCS
@@ -40,6 +41,7 @@ set(SRCS
         src/math.h
         src/upcast.h
         src/Image.cpp
+        src/ReusableAnimator.cpp
 )
 
 # ==================================================================================================
@@ -163,28 +165,14 @@ add_library(gltfio_resources_lite ${DUMMY_SRC} ${RESGEN_SOURCE})
 # ==================================================================================================
 
 include_directories(${PUBLIC_HDR_DIR} ${RESOURCE_DIR})
-if(HUNTER_ENABLED)
-  link_libraries(math utils filament cgltf::cgltf stb::stb geometry gltfio_resources tsl::hat_trie tsl::robin_map)
-else()
-  link_libraries(math utils filament cgltf stb geometry gltfio_resources tsl trie)
-endif()
+link_libraries(math utils filament cgltf stb geometry gltfio_resources tsl trie)
 
 add_library(gltfio_core STATIC ${PUBLIC_HDRS} ${SRCS})
 
-if(HUNTER_ENABLED)
-  target_include_directories(gltfio_core PUBLIC  
-    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/${PUBLIC_HDR_DIR}>  
-    $<INSTALL_INTERFACE:${PUBLIC_HDR_DIR}>)
-else()
-  target_include_directories(gltfio_core PUBLIC ${PUBLIC_HDR_DIR})
-endif()
+target_include_directories(gltfio_core PUBLIC ${PUBLIC_HDR_DIR})
 
 target_compile_definitions(gltfio_core PUBLIC -DGLTFIO_DRACO_SUPPORTED=1)
-if(HUNTER_ENABLED)
-  target_link_libraries(gltfio_core PUBLIC draco::draco)
-else()
-  target_link_libraries(gltfio_core PUBLIC dracodec)
-endif()
+target_link_libraries(gltfio_core PUBLIC dracodec)
 
 if (NOT WEBGL AND NOT ANDROID AND NOT IOS)
 
@@ -193,14 +181,7 @@ if (NOT WEBGL AND NOT ANDROID AND NOT IOS)
     # ==================================================================================================
     add_library(${TARGET} STATIC ${PUBLIC_HDRS} src/MaterialGenerator.cpp)
     target_link_libraries(${TARGET} PUBLIC filamat gltfio_core)
-    
-    if(HUNTER_ENABLED)
-      target_include_directories(${TARGET} PUBLIC  
-        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/${PUBLIC_HDR_DIR}>  
-        $<INSTALL_INTERFACE:${PUBLIC_HDR_DIR}>)
-    else()
-      target_include_directories(${TARGET} PUBLIC ${PUBLIC_HDR_DIR})
-    endif()
+    target_include_directories(${TARGET} PUBLIC ${PUBLIC_HDR_DIR})
 
     # ==================================================================================================
     # Compiler flags
@@ -215,11 +196,7 @@ if (NOT WEBGL AND NOT ANDROID AND NOT IOS)
     # ==================================================================================================
     # Installation
     # ==================================================================================================
-    if(HUNTER_ENABLED)
-      install(TARGETS ${TARGET} gltfio_core gltfio_resources gltfio_resources_lite EXPORT ${TARGETS_EXPORT_NAME} ARCHIVE DESTINATION lib/${DIST_DIR})
-    else()
-      install(TARGETS ${TARGET} gltfio_core gltfio_resources gltfio_resources_lite ARCHIVE DESTINATION lib/${DIST_DIR})
-    endif()
+    install(TARGETS ${TARGET} gltfio_core gltfio_resources gltfio_resources_lite ARCHIVE DESTINATION lib/${DIST_DIR})
     install(DIRECTORY ${PUBLIC_HDR_DIR}/gltfio DESTINATION include)
 
 else()
