@@ -51,6 +51,7 @@ using TimeValues = map<float, size_t>;
 using SourceValues = vector<float>;
 using BoneVector = vector<filament::math::mat4f>;
 using NamedEntityMap = tsl::robin_map<std::string, utils::Entity>;
+using TransformMap = tsl::robin_map<utils::Entity, mat4f>;
 
 struct Sampler {
     TimeValues times;
@@ -77,6 +78,7 @@ struct ReusableAnimatorImpl {
     FFilamentAsset* animationAsset = nullptr;
     FFilamentAsset* asset = nullptr;
     NamedEntityMap entityMap;
+    TransformMap zeroTransform;
     RenderableManager* renderableManager;
     TransformManager* transformManager;
     vector<float> weights;
@@ -158,17 +160,6 @@ static bool validateAnimation(const cgltf_animation& anim) {
         if (!channel.sampler) {
             return false;
         }
-        cgltf_size components = 1;
-        if (channel.target_path == cgltf_animation_path_type_weights) {
-            if (!channel.target_node->mesh || !channel.target_node->mesh->primitives_count) {
-                return false;
-            }
-            components = channel.target_node->mesh->primitives[0].targets_count;
-        }
-        cgltf_size values = sampler->interpolation == cgltf_interpolation_type_cubic_spline ? 3 : 1;
-        if (sampler->input->count * components * values != sampler->output->count) {
-            return false;
-        }
     }
     return true;
 }
@@ -227,7 +218,7 @@ ReusableAnimator::ReusableAnimator(const ReusableAnimator& other) {
 }
 
 ReusableAnimator::~ReusableAnimator() {
-    delete mImpl->morpher;
+    if (mImpl->asset) clear();
     delete mImpl;
 }
 
@@ -326,13 +317,22 @@ const char* ReusableAnimator::getAnimationName(size_t animationIndex) const {
 }
 
 void ReusableAnimator::clear() {
+    if (mImpl->asset) {
+        for (auto iter : mImpl->zeroTransform) {
+            auto ci = mImpl->transformManager->getInstance(iter.first);
+            mImpl->transformManager->setTransform(ci, iter.second);
+        }
+    }
+
     mImpl->asset = nullptr;
     mImpl->entityMap.clear();
+    mImpl->zeroTransform.clear();
     mImpl->renderableManager = nullptr;
     mImpl->transformManager = nullptr;
     mImpl->boneMatrices.clear();
     mImpl->weights.clear();
-    delete mImpl->morpher;
+
+    if (mImpl->morpher) delete mImpl->morpher;
     mImpl->morpher = nullptr;
 }
 
@@ -347,6 +347,14 @@ void ReusableAnimator::addAnimatedAsset(FilamentAsset* assetToAnimate) {
     mImpl->renderableManager = &asset->mEngine->getRenderableManager();
     mImpl->transformManager = &asset->mEngine->getTransformManager();
     mImpl->morpher = new CpuMorpher(asset);
+
+    size_t entityCount = assetToAnimate->getEntityCount();
+    auto* entities = assetToAnimate->getEntities();
+    for (size_t i = 0; i < entityCount; ++i) {
+        auto entity = entities[i];
+        auto instance = mImpl->transformManager->getInstance(entity);
+        mImpl->zeroTransform[entity] = mImpl->transformManager->getTransform(instance);
+    }
 
     const cgltf_data* srcAsset = mImpl->animationAsset->mSourceAsset->hierarchy;
     const cgltf_animation* srcAnims = srcAsset->animations;
