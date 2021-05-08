@@ -3,10 +3,11 @@
 This file contains one line summaries of commits that are worthy of mentioning in release notes.
 A new header is inserted each time a *tag* is created.
 
-## Next release (main branch)
+## v1.9.26 (currently main branch)
+
+## v1.9.25
 
 - engine: new screen-space lens flare
-- engine: new experimental tone mapper, `EVILS` (name will most likely change)
 
 ## v1.9.24
 
