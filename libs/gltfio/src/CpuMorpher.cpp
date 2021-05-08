@@ -164,16 +164,6 @@ void CpuMorpher::applyWeights(Entity entity, float const* weights, size_t count)
     auto renderableManager = &engine.getRenderableManager();
     auto renderable = renderableManager->getInstance(entity);
 
-    // If there are 4 or fewer targets, we can simply re-use the original VertexBuffer.
-    if (count <= 4) {
-        float4 vec{};
-        for (size_t i = 0; i < count; i++) {
-            vec[i] = weights[i];
-        }
-        renderableManager->setMorphWeights(renderable, vec);
-        return;
-    }
-
     for (auto& prim : mMorphTable[entity].primitives) {
         size_t size = prim.vertexCache.size() * 4;
         float* data = (float*) malloc(size);

@@ -83,6 +83,7 @@ struct ReusableAnimatorImpl {
     TransformManager* transformManager;
     vector<float> weights;
     CpuMorpher* morpher;
+    bool isMorpherExternal = false;
     void addChannels(const NamedEntityMap& entityMap, const cgltf_animation& srcAnim, Animation& dst);
     void applyAnimation(const Channel& channel, float t, size_t prevIndex, size_t nextIndex);
 };
@@ -207,7 +208,9 @@ ReusableAnimator::ReusableAnimator(FilamentAsset* animationAsset) {
 
 ReusableAnimator::ReusableAnimator(const ReusableAnimator& other) {
     mImpl = new ReusableAnimatorImpl(*other.mImpl);
-    mImpl->morpher = new CpuMorpher(*other.mImpl->morpher);
+    if (!mImpl->isMorpherExternal) {
+        mImpl->morpher = new CpuMorpher(*other.mImpl->morpher);
+    }
     for (size_t i = 0; i < mImpl->animations.size(); ++i) {
         for (size_t j =0; j < mImpl->animations[i].channels.size(); ++j) {
             mImpl->animations[i].channels[j].sourceData = mImpl->animations[i].samplers.data() 
@@ -332,11 +335,13 @@ void ReusableAnimator::clear() {
     mImpl->boneMatrices.clear();
     mImpl->weights.clear();
 
-    if (mImpl->morpher) delete mImpl->morpher;
+    if (!mImpl->isMorpherExternal) {
+        if (mImpl->morpher) destroyMorpher(mImpl->morpher);
+    }
     mImpl->morpher = nullptr;
 }
 
-void ReusableAnimator::addAnimatedAsset(FilamentAsset* assetToAnimate) {
+void ReusableAnimator::addAnimatedAsset(FilamentAsset* assetToAnimate, CpuMorpher* morpher) {
     FFilamentAsset* asset = upcast(assetToAnimate);
     mImpl->asset = asset;
     for (auto iter : asset->mNodeMap) {
@@ -346,7 +351,15 @@ void ReusableAnimator::addAnimatedAsset(FilamentAsset* assetToAnimate) {
     }
     mImpl->renderableManager = &asset->mEngine->getRenderableManager();
     mImpl->transformManager = &asset->mEngine->getTransformManager();
-    mImpl->morpher = new CpuMorpher(asset);
+    if (morpher) {
+        mImpl->morpher = morpher;
+        mImpl->isMorpherExternal = true;
+    }
+    else {
+        mImpl->morpher = createMorpher(asset);
+        mImpl->isMorpherExternal = false;
+    }
+    
 
     size_t entityCount = assetToAnimate->getEntityCount();
     auto* entities = assetToAnimate->getEntities();
@@ -363,6 +376,14 @@ void ReusableAnimator::addAnimatedAsset(FilamentAsset* assetToAnimate) {
         Animation& dstAnim = mImpl->animations[i];
         mImpl->addChannels(mImpl->entityMap, srcAnim, dstAnim);
     }
+}
+
+CpuMorpher* ReusableAnimator::createMorpher(FilamentAsset* asset) {
+    return new CpuMorpher(upcast(asset));
+}
+
+void ReusableAnimator::destroyMorpher(CpuMorpher* morpher) {
+    if (morpher) delete morpher;
 }
 
 
@@ -485,7 +506,10 @@ void ReusableAnimatorImpl::applyAnimation(const Channel& channel, float t, size_
                 }
             }
 
-            morpher->applyWeights(channel.targetEntity, weights.data(), weights.size());
+            if (morpher) {
+                morpher->applyWeights(channel.targetEntity, weights.data(), weights.size());
+            }
+            
             return;
         }
     }
