@@ -18,7 +18,7 @@
 
 #include "FFilamentAsset.h"
 #include "FFilamentInstance.h"
-#include "MorphHelper.h"
+#include "CpuMorpher.h"
 #include "math.h"
 #include "upcast.h"
 
@@ -80,7 +80,7 @@ struct ReusableAnimatorImpl {
     RenderableManager* renderableManager;
     TransformManager* transformManager;
     vector<float> weights;
-    MorphHelper* morpher;
+    CpuMorpher* morpher;
     void addChannels(const NamedEntityMap& entityMap, const cgltf_animation& srcAnim, Animation& dst);
     void applyAnimation(const Channel& channel, float t, size_t prevIndex, size_t nextIndex);
 };
@@ -216,7 +216,7 @@ ReusableAnimator::ReusableAnimator(FilamentAsset* animationAsset) {
 
 ReusableAnimator::ReusableAnimator(const ReusableAnimator& other) {
     mImpl = new ReusableAnimatorImpl(*other.mImpl);
-    mImpl->morpher = new MorphHelper(*other.mImpl->morpher);
+    mImpl->morpher = new CpuMorpher(*other.mImpl->morpher);
     for (size_t i = 0; i < mImpl->animations.size(); ++i) {
         for (size_t j =0; j < mImpl->animations[i].channels.size(); ++j) {
             mImpl->animations[i].channels[j].sourceData = mImpl->animations[i].samplers.data() 
@@ -346,7 +346,7 @@ void ReusableAnimator::addAnimatedAsset(FilamentAsset* assetToAnimate) {
     }
     mImpl->renderableManager = &asset->mEngine->getRenderableManager();
     mImpl->transformManager = &asset->mEngine->getTransformManager();
-    mImpl->morpher = new MorphHelper(asset, nullptr);
+    mImpl->morpher = new CpuMorpher(asset);
 
     const cgltf_data* srcAsset = mImpl->animationAsset->mSourceAsset->hierarchy;
     const cgltf_animation* srcAnims = srcAsset->animations;

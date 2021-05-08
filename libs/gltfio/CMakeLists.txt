@@ -42,6 +42,8 @@ set(SRCS
         src/upcast.h
         src/Image.cpp
         src/ReusableAnimator.cpp
+        src/CpuMorpher.h
+        src/CpuMorpher.cpp
 )
 
 # ==================================================================================================
