@@ -167,7 +167,11 @@ static bool validateAnimation(const cgltf_animation& anim) {
 
 ReusableAnimator::ReusableAnimator(FilamentAsset* animationAsset) {
     FFilamentAsset* asset = upcast(animationAsset);
-    assert(asset->mResourcesLoaded && asset->mSourceAsset);
+    assert(asset->mSourceAsset);
+    if (!asset->mResourcesLoaded) {
+        cgltf_options options;
+        cgltf_load_buffers(&options, asset->mSourceAsset->hierarchy, "");
+    }
     mImpl = new ReusableAnimatorImpl();
     mImpl->animationAsset = asset;
 

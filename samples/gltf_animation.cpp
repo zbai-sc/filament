@@ -472,7 +472,6 @@ int main(int argc, char** argv) {
     };
 
     auto loadAnimResources = [&app] (utils::Path filename) {
-        app.resourceLoader->loadResources(app.animAsset);
         if (app.animator) {
             delete app.animator;
         }
