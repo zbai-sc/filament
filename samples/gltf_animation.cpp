@@ -76,6 +76,7 @@ struct App {
     FilamentAsset* asset = nullptr;
     FilamentAsset* animAsset = nullptr;
     ReusableAnimator* animator = nullptr;
+    CPUMorpher* morpher = nullptr;
     NameComponentManager* names;
 
     MaterialProvider* materials;
@@ -462,6 +463,7 @@ int main(int argc, char** argv) {
             app.resourceLoader = new gltfio::ResourceLoader(configuration);
         }
         app.resourceLoader->loadResources(app.asset);
+        app.morpher = ReusableAnimator::createMorpher(app.asset);
 
         auto ibl = FilamentApp::get().getIBL();
         if (ibl) {
@@ -476,7 +478,7 @@ int main(int argc, char** argv) {
         }
 
         app.animator = new ReusableAnimator(app.animAsset);
-        app.animator->addAnimatedAsset(app.asset);
+        app.animator->addAnimatedAsset(app.asset, app.morpher);
 
         auto animator = new ReusableAnimator(*app.animator);
         delete app.animator;
@@ -647,6 +649,7 @@ int main(int argc, char** argv) {
         app.automationEngine->terminate();
         app.resourceLoader->asyncCancelLoad();
         app.assetLoader->destroyAsset(app.asset);
+        ReusableAnimator::destroyMorpher(app.morpher);
         if (app.animAsset) {
             app.assetLoader->destroyAsset(app.animAsset);
         }
