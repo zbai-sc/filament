@@ -42,6 +42,9 @@ set(SRCS
         src/upcast.h
         src/Image.cpp
         src/ReusableAnimator.cpp
+        src/CPUMorpher.h
+        src/CPUMorpher.cpp
+        src/GltfHelpers.h
 )
 
 # ==================================================================================================

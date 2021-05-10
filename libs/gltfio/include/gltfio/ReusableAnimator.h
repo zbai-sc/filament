@@ -23,6 +23,7 @@
 namespace gltfio {
 
 struct ReusableAnimatorImpl;
+class CPUMorpher;
 
 /**
  * \class ReusableAnimator ReusableAnimator.h gltfio/ReusableAnimator.h
@@ -72,8 +73,19 @@ public:
     /** Remove the model to be animated. */
     void removeAnimatedAsset();
 
-    /** Add the model to be animated. */
-    void addAnimatedAsset(FilamentAsset* assetToAnimate);
+    /** Add the model to be animated. 
+     * 
+     * NOTE: by default ReusableAnimator creates and owns an internal morpher. i.e. 
+     * ReusableAnimator will copy and destroy the morpher when apporiate. But if an external 
+     * morpher is supplied here, ReusableAnimator will not create the internal morpher anymore.
+    */
+    void addAnimatedAsset(FilamentAsset* assetToAnimate, CPUMorpher* morpher = nullptr);
+
+    /** Create a morpher that can be reused later. */
+    static CPUMorpher* createMorpher(FilamentAsset* asset);
+
+    /** Destroy morpher. */
+    static void destroyMorpher(CPUMorpher* morpher);
 
 private:
     
