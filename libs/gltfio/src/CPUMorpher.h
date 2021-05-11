@@ -63,8 +63,8 @@ private:
         filament::VertexBuffer* vertexBuffer;
         int baseSlot;
         size_t floatsCount;
-        filament::BufferObject* morphBuffer1;
-        filament::BufferObject* morphBuffer2;
+        filament::BufferObject* morphBuffer1 = nullptr;
+        filament::BufferObject* morphBuffer2 = nullptr;
         std::vector<GltfTarget> targets;
     };
 

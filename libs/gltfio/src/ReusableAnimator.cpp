@@ -82,7 +82,7 @@ struct ReusableAnimatorImpl {
     RenderableManager* renderableManager;
     TransformManager* transformManager;
     vector<float> weights;
-    CPUMorpher* morpher;
+    CPUMorpher* morpher = nullptr;
     bool isMorpherExternal = false;
     void addChannels(const NamedEntityMap& entityMap, const cgltf_animation& srcAnim, Animation& dst);
     void applyAnimation(const Channel& channel, float t, size_t prevIndex, size_t nextIndex);
