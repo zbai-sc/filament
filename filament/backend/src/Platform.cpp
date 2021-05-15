@@ -138,12 +138,8 @@ DefaultPlatform* DefaultPlatform::create(Backend* backend) noexcept {
         #elif defined(__EMSCRIPTEN__)
             return new PlatformWebGL();
         #else
-           return new PlatformGLX();
+            return new PlatformDummyGL();
         #endif
-    #elif defined(WIN32)
-        return new PlatformWGL();
-    #elif defined(__EMSCRIPTEN__)
-        return new PlatformWebGL();
     #else
         return nullptr;
     #endif
