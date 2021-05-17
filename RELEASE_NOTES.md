@@ -3,7 +3,9 @@
 This file contains one line summaries of commits that are worthy of mentioning in release notes.
 A new header is inserted each time a *tag* is created.
 
-## v1.10.0 (currently main branch)
+## v1.10.1 (currently main branch)
+
+## v1.10.0
 
 - engine: User materials can now use 9 samplers instead of 8 [⚠️ **Material breakage**].
 - engine: Remove `populateTangentQuaternions`  [⚠️ **API change**].
