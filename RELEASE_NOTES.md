@@ -3,7 +3,9 @@
 This file contains one line summaries of commits that are worthy of mentioning in release notes.
 A new header is inserted each time a *tag* is created.
 
-## v1.10.1 (currently main branch)
+## v1.10.2 (currently main branch)
+
+## v1.10.1
 
 - engine: Attachments of custom RendereTargets are not systematically discarded
 - engine: New API to duplicate a `MaterialInstance`
