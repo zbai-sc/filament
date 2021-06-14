@@ -3,7 +3,9 @@
 This file contains one line summaries of commits that are worthy of mentioning in release notes.
 A new header is inserted each time a *tag* is created.
 
-## v1.10.4 (currently main branch)
+## v1.10.5 (currently main branch)
+
+## v1.10.4
 
 ## v1.10.3
 
