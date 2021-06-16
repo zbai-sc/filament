@@ -128,7 +128,7 @@ public:
     bool analyzeFragmentShader(const std::string& shaderCode,
             filament::backend::ShaderModel model,
             MaterialBuilder::MaterialDomain materialDomain,
-            MaterialBuilder::TargetApi targetApi) const noexcept;
+            MaterialBuilder::TargetApi targetApi, bool hasCustomSurfaceShading) const noexcept;
 
     bool analyzeVertexShader(const std::string& shaderCode,
             filament::backend::ShaderModel model,
