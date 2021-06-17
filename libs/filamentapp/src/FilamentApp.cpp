@@ -543,6 +543,9 @@ FilamentApp::Window::Window(FilamentApp* filamentApp,
         // current, rather than the one created by SDL.
         mFilamentApp->mEngine = Engine::create(config.backend);
 
+        // get the resolved backend
+        config.backend = mFilamentApp->mEngine->getBackend();
+
         void* nativeWindow = ::getNativeWindow(mWindow);
         void* nativeSwapChain = nativeWindow;
 
