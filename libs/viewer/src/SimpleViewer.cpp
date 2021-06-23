@@ -311,7 +311,7 @@ SimpleViewer::SimpleViewer(filament::Engine* engine, filament::Scene* scene, fil
     mSettings.view.antiAliasing = AntiAliasing::FXAA;
     mSettings.view.sampleCount = 4;
     mSettings.view.ssao.enabled = true;
-    mSettings.view.bloom.enabled = true;
+    mSettings.view.bloom.enabled = false;
 
     using namespace filament;
     LightManager::Builder(LightManager::Type::SUN)
@@ -366,6 +366,14 @@ void SimpleViewer::populateScene(FilamentAsset* asset, bool scale,
         }
         mScene->addEntities(renderables, numWritten);
     }
+}
+
+void SimpleViewer::addLight(FilamentAsset* asset) {
+    mScene->addEntities(asset->getLightEntities(), asset->getLightEntityCount());
+}
+
+void SimpleViewer::removeLight(FilamentAsset* asset) {
+    mScene->removeEntities(asset->getLightEntities(), asset->getLightEntityCount());
 }
 
 void SimpleViewer::removeAsset() {
@@ -690,22 +698,22 @@ void SimpleViewer::updateUserInterface() {
         ImGui::SliderFloat("Split pos 1", &light.shadowOptions.cascadeSplitPositions[1], 0.0f, 1.0f);
         ImGui::SliderFloat("Split pos 2", &light.shadowOptions.cascadeSplitPositions[2], 0.0f, 1.0f);
         ImGui::Unindent();
-        light.shadowOptions.shadowCascades = shadowCascades;
+        // light.shadowOptions.shadowCascades = shadowCascades;
     }
 
-    if (ImGui::CollapsingHeader("Fog")) {
-        ImGui::Indent();
-        ImGui::Checkbox("Enable fog", &mSettings.view.fog.enabled);
-        ImGui::SliderFloat("Start", &mSettings.view.fog.distance, 0.0f, 100.0f);
-        ImGui::SliderFloat("Density", &mSettings.view.fog.density, 0.0f, 1.0f);
-        ImGui::SliderFloat("Height", &mSettings.view.fog.height, 0.0f, 100.0f);
-        ImGui::SliderFloat("Height falloff", &mSettings.view.fog.heightFalloff, 0.0f, 10.0f);
-        ImGui::SliderFloat("Scattering start", &mSettings.view.fog.inScatteringStart, 0.0f, 100.0f);
-        ImGui::SliderFloat("Scattering size", &mSettings.view.fog.inScatteringSize, 0.1f, 100.0f);
-        ImGui::Checkbox("Color from IBL", &mSettings.view.fog.fogColorFromIbl);
-        ImGui::ColorPicker3("Color", mSettings.view.fog.color.v);
-        ImGui::Unindent();
-    }
+    // if (ImGui::CollapsingHeader("Fog")) {
+    //     ImGui::Indent();
+    //     ImGui::Checkbox("Enable fog", &mSettings.view.fog.enabled);
+    //     ImGui::SliderFloat("Start", &mSettings.view.fog.distance, 0.0f, 100.0f);
+    //     ImGui::SliderFloat("Density", &mSettings.view.fog.density, 0.0f, 1.0f);
+    //     ImGui::SliderFloat("Height", &mSettings.view.fog.height, 0.0f, 100.0f);
+    //     ImGui::SliderFloat("Height falloff", &mSettings.view.fog.heightFalloff, 0.0f, 10.0f);
+    //     ImGui::SliderFloat("Scattering start", &mSettings.view.fog.inScatteringStart, 0.0f, 100.0f);
+    //     ImGui::SliderFloat("Scattering size", &mSettings.view.fog.inScatteringSize, 0.1f, 100.0f);
+    //     ImGui::Checkbox("Color from IBL", &mSettings.view.fog.fogColorFromIbl);
+    //     ImGui::ColorPicker3("Color", mSettings.view.fog.color.v);
+    //     ImGui::Unindent();
+    // }
 
     if (ImGui::CollapsingHeader("Scene")) {
         ImGui::Indent();

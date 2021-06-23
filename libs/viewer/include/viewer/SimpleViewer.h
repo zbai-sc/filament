@@ -86,6 +86,10 @@ public:
     void populateScene(FilamentAsset* asset, bool scale,
             FilamentInstance* instanceToAnimate = nullptr);
 
+    void addLight(FilamentAsset* asset);
+
+    void removeLight(FilamentAsset* asset);
+
     /**
      * Removes the current asset from the viewer.
      *
@@ -209,6 +213,8 @@ public:
 
     int getCurrentCamera() const { return mCurrentCamera; }
 
+    Settings mSettings;
+
 private:
     void updateIndirectLight();
 
@@ -232,7 +238,7 @@ private:
     bool mResetAnimation = true;
     bool mEnableWireframe = false;
     int mVsmMsaaSamplesLog2 = 1;
-    Settings mSettings;
+    
     int mSidebarWidth;
     uint32_t mFlags;
 

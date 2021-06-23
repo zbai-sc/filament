@@ -94,7 +94,7 @@ private:
 struct ColorGradingSettings {
     bool enabled = true;
     filament::ColorGrading::QualityLevel quality = filament::ColorGrading::QualityLevel::MEDIUM;
-    ToneMapping toneMapping = ToneMapping::ACES_LEGACY;
+    ToneMapping toneMapping = ToneMapping::LINEAR;
     float temperature = 0;
     float tint = 0;
     math::float3 outRed{1.0f, 0.0f, 0.0f};
@@ -155,12 +155,12 @@ struct MaterialSettings {
 
 struct LightSettings {
     bool enableShadows = true;
-    bool enableSunlight = true;
+    bool enableSunlight = false;
     LightManager::ShadowOptions shadowOptions;
     float sunlightIntensity = 100000.0f;
     math::float3 sunlightDirection = {0.6, -1.0, -0.8};;
     math::float3 sunlightColor = filament::Color::toLinear<filament::ACCURATE>({ 0.98, 0.92, 0.89});
-    float iblIntensity = 30000.0f;
+    float iblIntensity = 10000.0f;
     float iblRotation = 0.0f;
 };
 

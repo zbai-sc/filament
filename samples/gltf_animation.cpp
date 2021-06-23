@@ -75,6 +75,7 @@ struct App {
     AssetLoader* assetLoader;
     FilamentAsset* asset = nullptr;
     FilamentAsset* animAsset = nullptr;
+    FilamentAsset* lightAsset = nullptr;
     ReusableAnimator* animator = nullptr;
     CPUMorpher* morpher = nullptr;
     NameComponentManager* names;
@@ -387,6 +388,9 @@ int main(int argc, char** argv) {
                 return 1;
             }
         }
+    } else {
+        std::cerr << "no asset file given!" << std::endl;
+        return 1;
     }
 
     auto loadAsset = [&app](utils::Path filename) {
@@ -451,6 +455,39 @@ int main(int argc, char** argv) {
         }
     };
 
+    auto loadLightAsset = [&app](utils::Path filename) {
+        // Peek at the file size to allow pre-allocation.
+        long contentSize = static_cast<long>(getFileSize(filename.c_str()));
+        if (contentSize <= 0) {
+            std::cerr << "Unable to open " << filename << std::endl;
+            exit(1);
+        }
+
+        // Consume the glTF file.
+        std::ifstream in(filename.c_str(), std::ifstream::binary | std::ifstream::in);
+        std::vector<uint8_t> buffer(static_cast<unsigned long>(contentSize));
+        if (!in.read((char*) buffer.data(), contentSize)) {
+            std::cerr << "Unable to read " << filename << std::endl;
+            exit(1);
+        }
+
+        // Parse the glTF file and create Filament entities.
+        if (filename.getExtension() == "glb") {
+            app.lightAsset = app.assetLoader->createAssetFromBinary(buffer.data(), buffer.size());
+        } else {
+            app.lightAsset = app.assetLoader->createAssetFromJson(buffer.data(), buffer.size());
+        }
+        buffer.clear();
+        buffer.shrink_to_fit();
+
+        if (!app.animAsset) {
+            std::cerr << "Unable to parse " << filename << std::endl;
+            exit(1);
+        }
+
+        app.viewer->addLight(app.lightAsset);
+    };
+
     auto loadResources = [&app] (utils::Path filename) {
         // Load external textures and buffers.
         std::string gltfPath = filename.getAbsolutePath();
@@ -478,10 +515,6 @@ int main(int argc, char** argv) {
 
         app.animator = new ReusableAnimator(app.animAsset);
         app.animator->addAnimatedAsset(app.asset, app.morpher);
-
-        auto animator = new ReusableAnimator(*app.animator);
-        delete app.animator;
-        app.animator = animator;
     };
 
     auto setup = [&](Engine* engine, View* view, Scene* scene) {
@@ -540,15 +573,13 @@ int main(int argc, char** argv) {
                 createMaterialGenerator(engine) : createUbershaderLoader(engine);
         app.assetLoader = AssetLoader::create({engine, app.materials, app.names });
         app.mainCamera = &view->getCamera();
-        if (filename.isEmpty()) {
-            app.asset = app.assetLoader->createAssetFromBinary(
-                    GLTF_VIEWER_DAMAGEDHELMET_DATA,
-                    GLTF_VIEWER_DAMAGEDHELMET_SIZE);
-        } else {
+        app.mainCamera->lookAt({0, 0.7, 2.4},{0, 0.7, 0});
+        if (!filename.isEmpty()) {
             loadAsset(filename);
+            loadResources(filename);
+        } else {
+            exit(1);
         }
-
-        loadResources(filename);
 
         if (!animFileName.isEmpty()) {
             loadAnimAsset(animFileName);
@@ -566,6 +597,26 @@ int main(int argc, char** argv) {
             } else {
                 // The model is now fully loaded, so let automation know.
                 automation.signalBatchMode();
+            }
+
+            bool open = true;
+            if (app.lightAsset && ImGui::CollapsingHeader("Custom Lights", ImGuiTreeNodeFlags_DefaultOpen)) {
+                ImGui::Indent();
+                auto& lm = app.engine->getLightManager();
+                auto* lights = app.lightAsset->getLightEntities();
+                for (size_t i = 0; i < app.lightAsset->getLightEntityCount(); ++i){
+                    auto li = lm.getInstance(lights[i]);
+                    float x = lm.getIntensity(li);
+                    auto name = app.names->getName(app.names->getInstance(lights[i]));
+                    ImGui::SliderFloat(name, &x, 0.0f, 200000.0f);
+                    if(lm.isPointLight(li) || lm.isSpotLight(li)) {
+                        lm.setIntensityCandela(li, x);
+                    }
+                    else {
+                        lm.setIntensity(li, x);
+                    }
+                }
+                ImGui::Unindent();
             }
 
             // The screenshots do not include the UI, but we auto-open the Automation UI group
@@ -647,12 +698,16 @@ int main(int argc, char** argv) {
     auto cleanup = [&app](Engine* engine, View*, Scene*) {
         app.automationEngine->terminate();
         app.resourceLoader->asyncCancelLoad();
-        app.assetLoader->destroyAsset(app.asset);
+        delete app.animator;
+        
         ReusableAnimator::destroyMorpher(app.morpher);
         if (app.animAsset) {
             app.assetLoader->destroyAsset(app.animAsset);
         }
-        app.materials->destroyMaterials();
+        if (app.lightAsset) {
+            app.assetLoader->destroyAsset(app.lightAsset);
+        }
+        app.assetLoader->destroyAsset(app.asset);
 
         engine->destroy(app.scene.groundPlane);
         engine->destroy(app.scene.groundVertexBuffer);
@@ -660,17 +715,18 @@ int main(int argc, char** argv) {
         engine->destroy(app.scene.groundMaterial);
         engine->destroy(app.colorGrading);
 
+        app.materials->destroyMaterials();
+
         delete app.viewer;
         delete app.materials;
         delete app.names;
-        delete app.animator;
 
         AssetLoader::destroy(&app.assetLoader);
     };
 
     auto animate = [&app](Engine* engine, View* view, double now) {
         // Add renderables to the scene as they become ready.
-        app.viewer->populateScene(app.asset, !app.actualSize);
+        app.viewer->populateScene(app.asset, false);
 
         if (app.animator) {
             app.animator->applyAnimation(0, 0);
@@ -781,9 +837,24 @@ int main(int argc, char** argv) {
     filamentApp.resize(resize);
 
     filamentApp.setDropHandler([&] (std::string path) {
-        app.assetLoader->destroyAsset(app.animAsset);
-        loadAnimAsset(path);
-        loadAnimResources(path);
+        utils::Path path2 = path;
+        if (!app.animAsset) {
+            loadAnimAsset(path);
+            loadAnimResources(path);
+            return;
+        } else if (path2.getName().find("light") == std::string::npos) {
+            app.assetLoader->destroyAsset(app.animAsset);
+            loadAnimAsset(path);
+            loadAnimResources(path);
+            return;
+        }
+        if (app.lightAsset) {
+            app.viewer->removeLight(app.lightAsset);
+            app.assetLoader->destroyAsset(app.lightAsset);
+            app.lightAsset = nullptr;
+        }
+
+        loadLightAsset(path);
     });
 
     filamentApp.run(app.config, setup, cleanup, gui, preRender, postRender);
